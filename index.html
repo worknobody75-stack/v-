@@ -142,6 +142,8 @@
       max-width: 750px;
       box-shadow: 0 8px 30px rgba(0,0,0,0.4);
       transition: 0.4s;
+      position: relative;
+      z-index: 2;
     }
     .card:hover {
       transform: scale(1.02);
@@ -164,16 +166,13 @@
       cursor: pointer;
       transition: all 0.3s;
     }
-    .options button:hover {
+    .options button:hover:not(:disabled) {
       background: rgba(0, 245, 255, 0.3);
+      transform: scale(1.02);
     }
-    .options button.correct {
-      background: #28a745 !important;
-      box-shadow: 0 0 12px rgba(40, 167, 69, 0.8);
-    }
-    .options button.wrong {
-      background: #dc3545 !important;
-      box-shadow: 0 0 12px rgba(220, 53, 69, 0.8);
+    .options button:disabled {
+      cursor: not-allowed;
+      opacity: 0.7;
     }
     .score {
       font-size: 1.6rem;
@@ -190,10 +189,42 @@
       cursor: pointer;
       transition: 0.3s;
       display: inline-block;
+      margin-left: 10px;
     }
     .restart:hover, .share-btn:hover {
       background: #e68900;
       transform: scale(1.05);
+    }
+
+    /* Game Container */
+    #gameContainer {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1000;
+      background: rgba(0, 0, 0, 0.7);
+    }
+
+    #gameCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    #gameResult {
+      position: absolute;
+      top: 20%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 3.5rem;
+      font-weight: bold;
+      text-shadow: 0 0 20px rgba(0, 0, 0, 0.8), 0 0 40px currentColor;
+      opacity: 0;
+      transition: opacity 0.5s;
+      pointer-events: none;
     }
 
     /* Footer */
@@ -209,8 +240,22 @@
       text-decoration: none;
       font-weight: bold;
     }
+
+    .fade-out {
+      animation: fadeOut 0.5s forwards;
+    }
+    .fade-in {
+      animation: fadeIn 0.5s forwards;
+    }
+    @keyframes fadeOut {
+      to { opacity: 0; }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
   </style>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
   <!-- Particle Background -->
@@ -260,12 +305,17 @@
   <main>
     <p style="font-size:1.1rem; max-width:750px; margin:20px auto; line-height:1.6; color:#fff; z-index:2; position:relative;">
       ✨ This quiz will help you test your knowledge or learn more about the project.  
-      Let’s check how much you know! 🚀 Don’t forget to share your quiz result on <strong>X (Twitter)</strong> by tagging <a href="https://x.com/v_on_vana" target="_blank" style="color:#00f5ff;">@v_on_vana</a>.
+      Let's check how much you know! 🚀 Don't forget to share your quiz result on <strong>X (Twitter)</strong> by tagging <a href="https://x.com/v_on_vana" target="_blank" style="color:#00f5ff;">@v_on_vana</a>.
     </p>
 
     <div id="quiz-container" class="card" style="display:none;">
-      <div class="progress"><div id="progress-bar" class="progress-bar"></div></div>
       <div id="quiz-content"></div>
+    </div>
+
+    <!-- Game Container -->
+    <div id="gameContainer">
+      <canvas id="gameCanvas"></canvas>
+      <div id="gameResult"></div>
     </div>
   </main>
 
@@ -309,6 +359,8 @@
 
     let currentQuestion = 0;
     let score = 0;
+    let userSelectedOption = "";
+    let isCorrectAnswer = false;
 
     function startQuiz() {
       document.getElementById("quiz-container").style.display = "block";
@@ -318,7 +370,6 @@
 
     function loadQuestion() {
       const container = document.getElementById("quiz-content");
-      const progressBar = document.getElementById("progress-bar");
       if (currentQuestion < questions.length) {
         const q = questions[currentQuestion];
         container.innerHTML = `
@@ -327,7 +378,6 @@
             ${q.options.map(opt => `<button onclick="checkAnswer(this)">${opt}</button>`).join("")}
           </div>
         `;
-        progressBar.style.width = ((currentQuestion+1)/questions.length)*100 + "%";
       } else {
         container.innerHTML = `
           <h2>Quiz Completed 🎉</h2>
@@ -335,29 +385,338 @@
           <button class="restart" onclick="restartQuiz()">Restart Quiz</button>
           <button class="share-btn" onclick="shareOnX()">Share on X</button>
         `;
-        progressBar.style.width = "100%";
       }
     }
 
     function checkAnswer(button) {
       const q = questions[currentQuestion];
       const options = button.parentElement.querySelectorAll("button");
+      
+      // Store selected option (e.g., "a)", "b)", etc.)
+      userSelectedOption = button.innerText.substring(0, 2);
+      
+      // Check if correct (compare first 2 chars)
+      isCorrectAnswer = userSelectedOption === q.answer.substring(0, 2);
+      
+      // Disable all buttons but NO color change
       options.forEach(opt => opt.disabled = true);
 
-      if (button.innerText === q.answer) {
-        button.classList.add("correct");
-        score++;
-      } else {
-        button.classList.add("wrong");
-        options.forEach(opt => {
-          if (opt.innerText === q.answer) opt.classList.add("correct");
-        });
-      }
-
+      // Immediately fade to game - no visual feedback
       setTimeout(() => {
-        currentQuestion++;
-        loadQuestion();
-      }, 1100);
+        document.getElementById("quiz-container").classList.add("fade-out");
+        setTimeout(() => {
+          playBottleGame();
+        }, 500);
+      }, 300);
+    }
+
+    function playBottleGame() {
+      const container = document.getElementById("gameContainer");
+      const canvas = document.getElementById("gameCanvas");
+      const resultDiv = document.getElementById("gameResult");
+      
+      container.style.display = "block";
+      container.classList.add("fade-in");
+      
+      // Setup Three.js scene
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+      const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setClearColor(0x000000, 0);
+      
+      // Lighting
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+      scene.add(ambientLight);
+      
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+      directionalLight.position.set(8, 12, 8);
+      scene.add(directionalLight);
+      
+      const pointLight1 = new THREE.PointLight(0x00f5ff, 0.8, 50);
+      pointLight1.position.set(-8, 4, 5);
+      scene.add(pointLight1);
+      
+      const pointLight2 = new THREE.PointLight(0xff00ff, 0.6, 50);
+      pointLight2.position.set(8, 4, -5);
+      scene.add(pointLight2);
+      
+      // Create 4 Bottles (A, B, C, D)
+      const bottles = [];
+      const bottlePositions = [
+        { x: -3, label: 'A', option: 'a)' },
+        { x: -1, label: 'B', option: 'b)' },
+        { x: 1, label: 'C', option: 'c)' },
+        { x: 3, label: 'D', option: 'd)' }
+      ];
+      
+      bottlePositions.forEach((pos, index) => {
+        const bottleGroup = new THREE.Group();
+        
+        // Bottle body
+        const bodyGeometry = new THREE.CylinderGeometry(0.35, 0.4, 1.8, 32);
+        const bodyMaterial = new THREE.MeshPhongMaterial({
+          color: 0x87CEEB,
+          transparent: true,
+          opacity: 0.7,
+          shininess: 100,
+          specular: 0xffffff
+        });
+        const bottleBody = new THREE.Mesh(bodyGeometry, bodyMaterial);
+        bottleBody.position.y = 0.9;
+        bottleGroup.add(bottleBody);
+        
+        // Bottle neck
+        const neckGeometry = new THREE.CylinderGeometry(0.15, 0.25, 0.5, 32);
+        const bottleNeck = new THREE.Mesh(neckGeometry, bodyMaterial);
+        bottleNeck.position.y = 2.05;
+        bottleGroup.add(bottleNeck);
+        
+        // Bottle cap
+        const capGeometry = new THREE.CylinderGeometry(0.18, 0.18, 0.15, 32);
+        const capMaterial = new THREE.MeshPhongMaterial({
+          color: 0xff4444,
+          shininess: 80
+        });
+        const bottleCap = new THREE.Mesh(capGeometry, capMaterial);
+        bottleCap.position.y = 2.38;
+        bottleGroup.add(bottleCap);
+        
+        bottleGroup.position.set(pos.x, 0, 0);
+        bottleGroup.userData = { label: pos.label, option: pos.option, index: index };
+        scene.add(bottleGroup);
+        bottles.push(bottleGroup);
+      });
+      
+      // Create Slingshot
+      const slingshotGroup = new THREE.Group();
+      const frameMaterial = new THREE.MeshPhongMaterial({ color: 0x8B4513 });
+      
+      // Left prong
+      const prongGeometry = new THREE.CylinderGeometry(0.08, 0.08, 1.2, 16);
+      const leftProng = new THREE.Mesh(prongGeometry, frameMaterial);
+      leftProng.position.set(-0.25, 1.2, 0);
+      leftProng.rotation.z = 0.15;
+      slingshotGroup.add(leftProng);
+      
+      // Right prong
+      const rightProng = new THREE.Mesh(prongGeometry, frameMaterial);
+      rightProng.position.set(0.25, 1.2, 0);
+      rightProng.rotation.z = -0.15;
+      slingshotGroup.add(rightProng);
+      
+      // Handle
+      const handleGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.8, 16);
+      const handle = new THREE.Mesh(handleGeometry, frameMaterial);
+      handle.position.y = 0.4;
+      slingshotGroup.add(handle);
+      
+      slingshotGroup.position.set(-6, 0, 0);
+      scene.add(slingshotGroup);
+      
+      // Create Stone
+      const stoneGeometry = new THREE.SphereGeometry(0.12, 32, 32);
+      const stoneMaterial = new THREE.MeshPhongMaterial({ color: 0x555555 });
+      const stone = new THREE.Mesh(stoneGeometry, stoneMaterial);
+      stone.position.set(-6, 1.2, 0);
+      scene.add(stone);
+      
+      // Ground plane
+      const groundGeometry = new THREE.PlaneGeometry(25, 15);
+      const groundMaterial = new THREE.MeshPhongMaterial({ 
+        color: 0x654321, 
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.4
+      });
+      const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+      ground.rotation.x = Math.PI / 2;
+      ground.position.y = -0.5;
+      scene.add(ground);
+      
+      camera.position.set(0, 3.5, 10);
+      camera.lookAt(0, 1.5, 0);
+      
+      // Find target bottle based on user selection
+      const targetBottle = bottles.find(b => b.userData.option === userSelectedOption);
+      const targetX = targetBottle.position.x;
+      const targetY = 1.5; // Higher target point for better hit
+      
+      // Animation variables
+      let frame = 0;
+      const maxFrames = 180;
+      let stoneVelocity = new THREE.Vector3(0, 0, 0);
+      let bottleHit = false;
+      let shards = [];
+      let collisionFrame = 0;
+      let stoneReleased = false;
+      
+      function createShards(bottlePos) {
+        const shardCount = 15;
+        // BLUE for correct, RED for wrong
+        const shardColor = isCorrectAnswer ? 0x00f5ff : 0xdc3545;
+        
+        for (let i = 0; i < shardCount; i++) {
+          const shardGeometry = new THREE.BoxGeometry(
+            0.08 + Math.random() * 0.12,
+            0.15 + Math.random() * 0.15,
+            0.05
+          );
+          const shardMaterial = new THREE.MeshPhongMaterial({
+            color: shardColor,
+            transparent: true,
+            opacity: 0.8,
+            shininess: 100,
+            emissive: shardColor,
+            emissiveIntensity: 0.3
+          });
+          const shard = new THREE.Mesh(shardGeometry, shardMaterial);
+          shard.position.copy(bottlePos);
+          shard.position.y += 0.5 + Math.random() * 1.5;
+          
+          const angle = (Math.PI * 2 * i) / shardCount;
+          shard.velocity = new THREE.Vector3(
+            Math.cos(angle) * (0.06 + Math.random() * 0.06),
+            0.12 + Math.random() * 0.12,
+            Math.sin(angle) * (0.06 + Math.random() * 0.06)
+          );
+          shard.angularVelocity = new THREE.Vector3(
+            (Math.random() - 0.5) * 0.2,
+            (Math.random() - 0.5) * 0.2,
+            (Math.random() - 0.5) * 0.2
+          );
+          
+          scene.add(shard);
+          shards.push(shard);
+        }
+      }
+      
+      function animate() {
+        frame++;
+        
+        // Pull back animation (frame 0-25)
+        if (frame <= 25) {
+          stone.position.x = -6 - (frame * 0.04);
+          stone.position.y = 1.2 - (frame * 0.01);
+        }
+        // Release and calculate trajectory (frame 26)
+        else if (frame === 26) {
+          stoneReleased = true;
+          const dx = targetX - stone.position.x;
+          const dy = targetY - stone.position.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          // Faster speed for better hit detection
+          const speed = 0.20;
+          stoneVelocity.set((dx / distance) * speed, (dy / distance) * speed, 0);
+        }
+        // Stone flight
+        else if (stoneReleased && !bottleHit) {
+          stone.position.add(stoneVelocity);
+          
+          // Check collision with target bottle - improved detection
+          const distanceToTarget = Math.sqrt(
+            Math.pow(stone.position.x - targetX, 2) + 
+            Math.pow(stone.position.y - targetY, 2)
+          );
+          
+          // Hit detection - when stone gets close to bottle
+          if (distanceToTarget < 1.0) {
+            bottleHit = true;
+            collisionFrame = frame;
+            scene.remove(targetBottle);
+            createShards(targetBottle.position);
+            
+            // Update score if correct
+            if (isCorrectAnswer) {
+              score++;
+            }
+          }
+          
+          // Safety: auto-trigger if stone passes through
+          if (stone.position.x > targetX + 0.5 && !bottleHit) {
+            bottleHit = true;
+            collisionFrame = frame;
+            scene.remove(targetBottle);
+            createShards(targetBottle.position);
+            
+            if (isCorrectAnswer) {
+              score++;
+            }
+          }
+        }
+        
+        // Update shards
+        shards.forEach(shard => {
+          shard.velocity.y -= 0.003;
+          shard.position.add(shard.velocity);
+          shard.rotation.x += shard.angularVelocity.x;
+          shard.rotation.y += shard.angularVelocity.y;
+          shard.rotation.z += shard.angularVelocity.z;
+          
+          // Bounce on ground
+          if (shard.position.y < -0.3 && shard.velocity.y < 0) {
+            shard.velocity.y *= -0.25;
+            shard.velocity.x *= 0.7;
+            shard.velocity.z *= 0.7;
+          }
+        });
+        
+        // Show result after collision
+        if (bottleHit && frame > collisionFrame + 20) {
+          if (isCorrectAnswer) {
+            resultDiv.textContent = "CORRECT! ✅";
+            resultDiv.style.color = "#00f5ff";
+            resultDiv.style.textShadow = "0 0 20px rgba(0,0,0,0.8), 0 0 40px #00f5ff";
+          } else {
+            resultDiv.textContent = "WRONG! ❌";
+            resultDiv.style.color = "#dc3545";
+            resultDiv.style.textShadow = "0 0 20px rgba(0,0,0,0.8), 0 0 40px #dc3545";
+          }
+          resultDiv.style.opacity = "1";
+        }
+        
+        // Rotate other bottles slightly
+        bottles.forEach(b => {
+          if (!bottleHit || b !== targetBottle) {
+            b.rotation.y += 0.005;
+          }
+        });
+        
+        renderer.render(scene, camera);
+        
+        if (frame < maxFrames) {
+          requestAnimationFrame(animate);
+        } else {
+          setTimeout(() => {
+            container.classList.remove("fade-in");
+            container.classList.add("fade-out");
+            setTimeout(() => {
+              container.style.display = "none";
+              container.classList.remove("fade-out");
+              resultDiv.style.opacity = "0";
+              document.getElementById("quiz-container").classList.remove("fade-out");
+              
+              // Cleanup
+              scene.traverse(obj => {
+                if (obj.geometry) obj.geometry.dispose();
+                if (obj.material) {
+                  if (Array.isArray(obj.material)) {
+                    obj.material.forEach(mat => mat.dispose());
+                  } else {
+                    obj.material.dispose();
+                  }
+                }
+              });
+              renderer.dispose();
+              
+              currentQuestion++;
+              loadQuestion();
+            }, 500);
+          }, 500);
+        }
+      }
+      
+      animate();
     }
 
     function restartQuiz() {

@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>V! DataDAO Quiz</title>
+  <style>
+    /* Global Styles */
+    body {
+      margin: 0;
+      font-family: "Poppins", sans-serif;
+      background: linear-gradient(135deg, #0f2027, #2c5364, #1a2a6c, #b21f1f, #fdbb2d);
+      background-size: 500% 500%;
+      animation: gradientBG 18s ease infinite;
+      color: #fff;
+      text-align: center;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow-x: hidden;
+    }
+    @keyframes gradientBG {
+      0% {background-position: 0% 50%;}
+      50% {background-position: 100% 50%;}
+      100% {background-position: 0% 50%;}
+    }
+
+    /* Particle Background */
+    .particles {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      overflow: hidden;
+      z-index: 0;
+    }
+    .particles span {
+      position: absolute;
+      display: block;
+      width: 6px; height: 6px;
+      background: rgba(255,255,255,0.5);
+      border-radius: 50%;
+      animation: float 12s linear infinite;
+    }
+    @keyframes float {
+      from {transform: translateY(100vh) scale(0.5);}
+      to {transform: translateY(-10vh) scale(1);}
+    }
+
+    /* Header */
+    header {
+      z-index: 2;
+      position: relative;
+      padding: 20px;
+    }
+    header img {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      margin-top: 25px;
+      border: 4px solid #00f5ff;
+      box-shadow: 0 0 25px rgba(0, 245, 255, 0.8);
+    }
+    header h1 {
+      font-size: clamp(2rem, 4vw, 3.5rem);
+      margin: 15px 0 10px;
+      text-shadow: 0 0 15px rgba(255,255,255,0.5);
+    }
+    .tagline {
+      font-size: clamp(1.5rem, 3vw, 2.5rem);
+      font-weight: bold;
+      color: #ff4d94;
+      margin: 10px 0 20px;
+      text-shadow: 0 0 25px rgba(255,77,148,0.6);
+    }
+    header p {
+      font-size: clamp(1rem, 2vw, 1.2rem);
+      max-width: 850px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    /* CTA Buttons */
+    .cta {
+      margin: 30px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      justify-content: center;
+    }
+    .cta button {
+      padding: 15px 35px;
+      font-size: 1.2rem;
+      border: none;
+      border-radius: 50px;
+      background: linear-gradient(45deg, #ff4d94, #ff6ec7);
+      color: #fff;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 0 15px rgba(255, 110, 199, 0.6);
+    }
+    .cta button:hover {
+      transform: scale(1.08);
+      background: linear-gradient(45deg, #ff6ec7, #ff4d94);
+      box-shadow: 0 0 25px rgba(255, 110, 199, 0.9);
+    }
+
+    /* Features Section */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      padding: 30px;
+      z-index: 2;
+      position: relative;
+    }
+    .feature-card {
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(12px);
+      border-radius: 16px;
+      padding: 20px;
+      transition: 0.4s;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+    .feature-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 0 25px rgba(0,245,255,0.7);
+    }
+    .feature-card h3 {
+      color: #00f5ff;
+      margin-bottom: 10px;
+    }
+
+    /* Quiz Container */
+    .card {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(12px);
+      border-radius: 20px;
+      padding: 25px;
+      margin: 20px auto;
+      max-width: 750px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+      transition: 0.4s;
+    }
+    .card:hover {
+      transform: scale(1.02);
+      box-shadow: 0 0 25px rgba(0,245,255,0.7);
+    }
+    .question {
+      font-size: 1.4rem;
+      margin-bottom: 20px;
+    }
+    .options button {
+      display: block;
+      width: 100%;
+      margin: 12px 0;
+      padding: 14px;
+      font-size: 1.05rem;
+      border: none;
+      border-radius: 10px;
+      background: rgba(0, 245, 255, 0.1);
+      color: #fff;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .options button:hover {
+      background: rgba(0, 245, 255, 0.3);
+    }
+    .options button.correct {
+      background: #28a745 !important;
+      box-shadow: 0 0 12px rgba(40, 167, 69, 0.8);
+    }
+    .options button.wrong {
+      background: #dc3545 !important;
+      box-shadow: 0 0 12px rgba(220, 53, 69, 0.8);
+    }
+    .score {
+      font-size: 1.6rem;
+      margin-top: 25px;
+    }
+    .restart, .share-btn {
+      margin-top: 20px;
+      padding: 12px 28px;
+      font-size: 1.1rem;
+      border: none;
+      border-radius: 10px;
+      background: #ff9800;
+      color: #fff;
+      cursor: pointer;
+      transition: 0.3s;
+      display: inline-block;
+    }
+    .restart:hover, .share-btn:hover {
+      background: #e68900;
+      transform: scale(1.05);
+    }
+
+    /* Footer */
+    footer {
+      padding: 18px;
+      background: rgba(0,0,0,0.35);
+      font-size: 0.95rem;
+      position: relative;
+      z-index: 2;
+    }
+    footer a {
+      color: #00f5ff;
+      text-decoration: none;
+      font-weight: bold;
+    }
+  </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+  <!-- Particle Background -->
+  <div class="particles">
+    <span style="left:10%; animation-duration:14s;"></span>
+    <span style="left:30%; animation-duration:18s;"></span>
+    <span style="left:50%; animation-duration:20s;"></span>
+    <span style="left:70%; animation-duration:16s;"></span>
+    <span style="left:90%; animation-duration:22s;"></span>
+  </div>
+
+  <header>
+    <img src="https://pbs.twimg.com/profile_images/1840397922761879552/HzOjl_JZ_400x400.jpg" alt="V! Logo"/>
+    <h1>V! DataDAO</h1>
+    <div class="tagline">🚀 Own Your Data. Shape the Future.</div>
+    <p>
+      Welcome to <strong>V! DataDAO</strong>, the world's first community-driven Instagram data collection platform powered by the Vana blockchain! Built on trust, privacy, and transparency, V! DataDAO empowers users to control and monetize their data, turning it into collective insights that shape trends.
+    </p>
+    <div class="cta">
+      <button onclick="startQuiz()">Start Quiz</button>
+      <button onclick="window.open('https://discord.gg/tt3SB4CJt9','_blank')">Join Discord</button>
+      <button onclick="window.open('https://x.com/v_on_vana','_blank')">Follow on X</button>
+    </div>
+  </header>
+
+  <!-- Features Section -->
+  <section class="features">
+    <div class="feature-card">
+      <h3>🔒 Privacy First</h3>
+      <p>Your Instagram data is encrypted, anonymized, and fully under your control.</p>
+    </div>
+    <div class="feature-card">
+      <h3>🤝 Community Powered</h3>
+      <p>Join a global network of Data Agents who shape real trends together.</p>
+    </div>
+    <div class="feature-card">
+      <h3>📊 Collective Insights</h3>
+      <p>Turn raw data into powerful insights that redefine influence & trends.</p>
+    </div>
+    <div class="feature-card">
+      <h3>💎 V! NFTs</h3>
+      <p>The first NFT collection representing AI & Data ownership.</p>
+    </div>
+  </section>
+
+  <!-- Quiz -->
+  <main>
+    <p style="font-size:1.1rem; max-width:750px; margin:20px auto; line-height:1.6; color:#fff; z-index:2; position:relative;">
+      ✨ This quiz will help you test your knowledge or learn more about the project.  
+      Let’s check how much you know! 🚀 Don’t forget to share your quiz result on <strong>X (Twitter)</strong> by tagging <a href="https://x.com/v_on_vana" target="_blank" style="color:#00f5ff;">@v_on_vana</a>.
+    </p>
+
+    <div id="quiz-container" class="card" style="display:none;">
+      <div class="progress"><div id="progress-bar" class="progress-bar"></div></div>
+      <div id="quiz-content"></div>
+    </div>
+  </main>
+
+  <footer>
+    <p>Built with ❤️ by <strong>worknobody75</strong> | <a href="https://x.com/worknobody75" target="_blank">@worknobody75</a></p>
+  </footer>
+
+  <script>
+    const questions = [
+      { q: "1. What is the primary focus of the V! DataDAO project?",
+        options: ["a) Building a decentralized social media platform","b) Creating the world's first Instagram data collection platform","c) Developing new AI hardware","d) Launching a meme coin"],
+        answer: "b) Creating the world's first Instagram data collection platform" },
+      { q: "2. Which blockchain network powers the V! DataDAO?",
+        options: ["a) Solana","b) Ethereum","c) Vana","d) Binance Smart Chain"],
+        answer: "c) Vana" },
+      { q: "3. How does V! DataDAO handle user-uploaded Instagram data?",
+        options: ["a) It stores it publicly without encryption","b) It encrypts and anonymizes the data before processing","c) It deletes it after one use","d) It sells it directly to advertisers"],
+        answer: "b) It encrypts and anonymizes the data before processing" },
+      { q: "4. What is the main goal of turning Instagram data into collective insights in V! DataDAO?",
+        options: ["a) To increase ad revenue for Meta","b) To shape real trends and empower users as their own influencers","c) To train unrelated machine learning models","d) To create viral memes"],
+        answer: "b) To shape real trends and empower users as their own influencers" },
+      { q: "5. What unique aspect does the V! NFT collection represent?",
+        options: ["a) The first NFT for real estate","b) The first NFT to represent AI & Data","c) The first gaming NFT","d) The first music royalty NFT"],
+        answer: "b) The first NFT to represent AI & Data" },
+      { q: "6. What upcoming role is being introduced in the V! DataDAO community?",
+        options: ["a) Content Creators","b) Data Agents","c) Meme Lords","d) Trend Analysts"],
+        answer: "b) Data Agents" },
+      { q: "7. On what principle is V! DataDAO built regarding user data ownership?",
+        options: ["a) Centralized control by the team","b) Trust, privacy, and transparency with user control","c) Open sharing without permissions","d) Temporary access only"],
+        answer: "b) Trust, privacy, and transparency with user control" },
+      { q: "8. What is a DataDAO in the context of Vana and V! DataDAO?",
+        options: ["a) A decentralized autonomous organization for voting on memes","b) A collective pool where users pool and monetize their data","c) A tool for creating NFTs","d) A wallet for storing tokens"],
+        answer: "b) A collective pool where users pool and monetize their data" },
+      { q: "9. When did VANA tokens, related to the Vana network, launch on Binance Launchpool?",
+        options: ["a) January 2024","b) December 13, 2024","c) March 2025","d) July 2025"],
+        answer: "b) December 13, 2024" },
+      { q: "10. What is the total supply of the VANA token in the Vana ecosystem?",
+        options: ["a) 100,000,000","b) 120,000,000","c) 150,000,000","d) 200,000,000"],
+        answer: "b) 120,000,000" }
+    ];
+
+    let currentQuestion = 0;
+    let score = 0;
+
+    function startQuiz() {
+      document.getElementById("quiz-container").style.display = "block";
+      loadQuestion();
+      window.scrollTo({ top: document.getElementById("quiz-container").offsetTop, behavior: 'smooth' });
+    }
+
+    function loadQuestion() {
+      const container = document.getElementById("quiz-content");
+      const progressBar = document.getElementById("progress-bar");
+      if (currentQuestion < questions.length) {
+        const q = questions[currentQuestion];
+        container.innerHTML = `
+          <div class="question">${q.q}</div>
+          <div class="options">
+            ${q.options.map(opt => `<button onclick="checkAnswer(this)">${opt}</button>`).join("")}
+          </div>
+        `;
+        progressBar.style.width = ((currentQuestion+1)/questions.length)*100 + "%";
+      } else {
+        container.innerHTML = `
+          <h2>Quiz Completed 🎉</h2>
+          <div class="score">Your Score: ${score} / ${questions.length}</div>
+          <button class="restart" onclick="restartQuiz()">Restart Quiz</button>
+          <button class="share-btn" onclick="shareOnX()">Share on X</button>
+        `;
+        progressBar.style.width = "100%";
+      }
+    }
+
+    function checkAnswer(button) {
+      const q = questions[currentQuestion];
+      const options = button.parentElement.querySelectorAll("button");
+      options.forEach(opt => opt.disabled = true);
+
+      if (button.innerText === q.answer) {
+        button.classList.add("correct");
+        score++;
+      } else {
+        button.classList.add("wrong");
+        options.forEach(opt => {
+          if (opt.innerText === q.answer) opt.classList.add("correct");
+        });
+      }
+
+      setTimeout(() => {
+        currentQuestion++;
+        loadQuestion();
+      }, 1100);
+    }
+
+    function restartQuiz() {
+      currentQuestion = 0;
+      score = 0;
+      loadQuestion();
+    }
+
+    function shareOnX() {
+      const text = `I just completed the V! DataDAO Quiz 🎉 My Score: ${score}/${questions.length} 🚀\nTest your knowledge too & tag @v_on_vana #Vana #DataDAO`;
+      const url = "https://x.com/intent/tweet?text=" + encodeURIComponent(text);
+      window.open(url, "_blank");
+    }
+  </script>
+</body>
+</html>
